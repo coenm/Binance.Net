@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Binance.Net.Objects.Spot.MarketData;
 
 namespace Binance.Net
 {
@@ -20,7 +22,8 @@ namespace Binance.Net
             if (headers == null)
                 return null;
 
-            var headerValues = headers.SingleOrDefault(s => s.Key.StartsWith("X-MBX-USED-WEIGHT-", StringComparison.InvariantCultureIgnoreCase)).Value;
+            var headerValues = headers.SingleOrDefault(s =>
+                s.Key.StartsWith("X-MBX-USED-WEIGHT-", StringComparison.InvariantCultureIgnoreCase)).Value;
             if (headerValues != null && int.TryParse(headerValues.First(), out var value))
                 return value;
             return null;
@@ -36,7 +39,8 @@ namespace Binance.Net
             if (headers == null)
                 return null;
 
-            var headerValues = headers.SingleOrDefault(s => s.Key.StartsWith("X-MBX-ORDER-COUNT-", StringComparison.InvariantCultureIgnoreCase)).Value;
+            var headerValues = headers.SingleOrDefault(s =>
+                s.Key.StartsWith("X-MBX-ORDER-COUNT-", StringComparison.InvariantCultureIgnoreCase)).Value;
             if (headerValues != null && int.TryParse(headerValues.First(), out var value))
                 return value;
             return null;
@@ -50,7 +54,8 @@ namespace Binance.Net
         /// <param name="stepSize"></param>
         /// <param name="quantity"></param>
         /// <returns></returns>
-        public static decimal ClampQuantity(decimal minQuantity, decimal maxQuantity, decimal stepSize, decimal quantity)
+        public static decimal ClampQuantity(decimal minQuantity, decimal maxQuantity, decimal stepSize,
+            decimal quantity)
         {
             quantity = Math.Min(maxQuantity, quantity);
             quantity = Math.Max(minQuantity, quantity);
@@ -107,8 +112,39 @@ namespace Binance.Net
             if (string.IsNullOrEmpty(symbolString))
                 throw new ArgumentException("Symbol is not provided");
 
-            if(!Regex.IsMatch(symbolString, "^([A-Z|a-z|0-9]{5,})$"))
-                throw new ArgumentException($"{symbolString} is not a valid Binance symbol. Should be [BaseCurrency][QuoteCurrency], e.g. BTCUSDT");
+            if (!Regex.IsMatch(symbolString, "^([A-Z|a-z|0-9]{5,})$"))
+                throw new ArgumentException(
+                    $"{symbolString} is not a valid Binance symbol. Should be [BaseCurrency][QuoteCurrency], e.g. BTCUSDT");
+        }
+
+        public static string FormatPrice(this decimal price, int precision)
+        {
+            var result = price.ToString(CultureInfo.InvariantCulture);
+
+            if (string.IsNullOrWhiteSpace(result))
+                return result;
+
+            if (result!.Contains('.'))
+            {
+                var newResult = result!.TrimEnd('0');
+
+                if (newResult.EndsWith("."))
+                {
+                    newResult = newResult.TrimEnd('.');
+                }
+
+                return newResult;
+            }
+
+            return result;
+        }
+
+
+        public static string? FormatPrice(this decimal? price, int x)
+        {
+            if (price.HasValue == false)
+                return null;
+            return FormatPrice(price.Value, x);
         }
     }
 }

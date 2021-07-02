@@ -50,7 +50,7 @@ namespace Binance.Net.SubClients.Spot
             _log = log;
         }
 
-        #region Test New Order 
+        #region Test New Order
 
         /// <summary>
         /// Places a new test order. Test orders are not actually being executed and just test the functionality.
@@ -389,7 +389,7 @@ namespace Binance.Net.SubClients.Spot
 
         #endregion
 
-        #region All Orders 
+        #region All Orders
 
         /// <summary>
         /// Gets all orders for the provided symbol
@@ -529,11 +529,11 @@ namespace Binance.Net.SubClients.Spot
                 { "symbol", symbol },
                 { "side", JsonConvert.SerializeObject(side, new OrderSideConverter(false)) },
                 { "quantity", quantity.ToString(CultureInfo.InvariantCulture) },
-                { "price", price.ToString(CultureInfo.InvariantCulture) },
-                { "stopPrice", stopPrice.ToString(CultureInfo.InvariantCulture) },
+                { "price", price.FormatPrice(0) },
+                { "stopPrice", stopPrice.FormatPrice(0) },
                 { "timestamp", _baseClient.GetTimestamp() }
             };
-            parameters.AddOptionalParameter("stopLimitPrice", stopLimitPrice?.ToString(CultureInfo.InvariantCulture));
+            parameters.AddOptionalParameter("stopLimitPrice", stopLimitPrice.FormatPrice(0));
             parameters.AddOptionalParameter("listClientOrderId", listClientOrderId);
             parameters.AddOptionalParameter("limitClientOrderId", limitClientOrderId);
             parameters.AddOptionalParameter("stopClientOrderId", stopClientOrderId);
@@ -547,7 +547,7 @@ namespace Binance.Net.SubClients.Spot
 
         #endregion
 
-        #region Cancel OCO 
+        #region Cancel OCO
 
         /// <summary>
         /// Cancels a pending oco order

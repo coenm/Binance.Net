@@ -36,7 +36,7 @@ namespace Binance.Net
     /// </summary>
     public class BinanceClient : RestClient, IBinanceClient, IExchangeClient
     {
-        #region fields 
+        #region fields
         private static BinanceClientOptions _defaultOptions = new BinanceClientOptions();
         private static BinanceClientOptions DefaultOptions => _defaultOptions.Copy();
 
@@ -84,12 +84,12 @@ namespace Binance.Net
         /// Lending endpoints
         /// </summary>
         public IBinanceClientLending Lending { get; }
-        
+
         /// <summary>
         /// Mining endpoints
         /// </summary>
         public IBinanceClientMining Mining { get; }
-        
+
         /// <summary>
         /// Withdraw/deposit endpoints
         /// </summary>
@@ -158,7 +158,7 @@ namespace Binance.Net
             Margin = new BinanceClientMargin(this);
             Lending = new BinanceClientLending(this);
             Mining = new BinanceClientMining(this);
-            
+
             SubAccount = new BinanceClientSubAccount(this);
             WithdrawDeposit = new BinanceClientWithdrawDeposit(this);
             Blvt = new BinanceClientLeveragedTokens(this);
@@ -184,10 +184,10 @@ namespace Binance.Net
         {
             SetAuthenticationProvider(new BinanceAuthenticationProvider(new ApiCredentials(apiKey, apiSecret)));
         }
-        
+
         #region helpers
 
-        internal async Task<WebCallResult<BinancePlacedOrder>> PlaceOrderInternal(Uri uri, 
+        internal async Task<WebCallResult<BinancePlacedOrder>> PlaceOrderInternal(Uri uri,
             string symbol,
             OrderSide side,
             OrderType type,
@@ -238,9 +238,9 @@ namespace Binance.Net
             parameters.AddOptionalParameter("quantity", quantity?.ToString(CultureInfo.InvariantCulture));
             parameters.AddOptionalParameter("quoteOrderQty", quoteOrderQuantity?.ToString(CultureInfo.InvariantCulture));
             parameters.AddOptionalParameter("newClientOrderId", newClientOrderId);
-            parameters.AddOptionalParameter("price", price?.ToString(CultureInfo.InvariantCulture));
+            parameters.AddOptionalParameter("price", price.FormatPrice(0));
             parameters.AddOptionalParameter("timeInForce", timeInForce == null ? null : JsonConvert.SerializeObject(timeInForce, new TimeInForceConverter(false)));
-            parameters.AddOptionalParameter("stopPrice", stopPrice?.ToString(CultureInfo.InvariantCulture));
+            parameters.AddOptionalParameter("stopPrice", stopPrice.FormatPrice(0));
             parameters.AddOptionalParameter("icebergQty", icebergQty?.ToString(CultureInfo.InvariantCulture));
             parameters.AddOptionalParameter("sideEffectType", sideEffectType == null ? null : JsonConvert.SerializeObject(sideEffectType, new SideEffectTypeConverter(false)));
             parameters.AddOptionalParameter("isIsolated", isIsolated);
@@ -351,7 +351,7 @@ namespace Binance.Net
                     return BinanceTradeRuleResult.CreateFailed(
                         $"Trade rules check failed: {type} order type not allowed for {symbol}");
             }
-            
+
             if (symbolData.LotSizeFilter != null || (symbolData.MarketLotSizeFilter != null && type == OrderType.Market))
             {
                 var minQty = symbolData.LotSizeFilter?.MinQuantity;
@@ -456,7 +456,7 @@ namespace Binance.Net
 
                 if (symbolData.LotSizeFilter == null)
                     return BinanceTradeRuleResult.CreateFailed("Trade rules check failed: MinNotional filter failed. Unable to auto comply because LotSizeFilter not present");
-                
+
                 var minQuantity = symbolData.MinNotionalFilter.MinNotional / outputPrice.Value;
                 var stepSize = symbolData.LotSizeFilter!.StepSize;
                 outputQuantity = BinanceHelpers.Floor(minQuantity + (stepSize - (minQuantity % stepSize)));
@@ -473,7 +473,7 @@ namespace Binance.Net
         }
 
         #endregion
-        
+
         async Task<WebCallResult<IEnumerable<ICommonSymbol>>> IExchangeClient.GetSymbolsAsync()
         {
             var exchangeInfo = await Spot.System.GetExchangeInfoAsync();
@@ -530,7 +530,7 @@ namespace Binance.Net
         {
             if(string.IsNullOrEmpty(symbol))
                 return WebCallResult<IEnumerable<ICommonTrade>>.CreateErrorResult(new ArgumentError(nameof(symbol) + " required for Binance " + nameof(IExchangeClient.GetTradesAsync)));
-               
+
             var result = await Spot.Order.GetMyTradesAsync(symbol!);
             if(!result)
                 return WebCallResult<IEnumerable<ICommonTrade>>.CreateErrorResult(result.ResponseStatusCode, result.ResponseHeaders, result.Error!);
