@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
-using Binance.Net.Objects.Spot;
+using Binance.Net.Interfaces;
+using Binance.Net.Objects;
 using Binance.Net.Objects.Spot.MarketData;
 using CryptoExchange.Net.Objects;
 using CryptoExchange.Net.OrderBook;
@@ -13,8 +14,10 @@ namespace Binance.Net.SymbolOrderBooks
     /// </summary>
     public class BinanceSpotSymbolOrderBook : SymbolOrderBook
     {
-        private readonly BinanceClient _restClient;
-        private readonly BinanceSocketClient _socketClient;
+        private readonly IBinanceClient _restClient;
+        private readonly IBinanceSocketClient _socketClient;
+        private readonly bool _restOwner;
+        private readonly bool _socketOwner;
         private readonly int? _updateInterval;
 
         /// <summary>
@@ -27,18 +30,20 @@ namespace Binance.Net.SymbolOrderBooks
             symbol.ValidateBinanceSymbol();
             Levels = options?.Limit;
             _updateInterval = options?.UpdateInterval;
-            _restClient = new BinanceClient();
-            _socketClient = new BinanceSocketClient();
+            _socketClient = options?.SocketClient ?? new BinanceSocketClient();
+            _restClient = options?.RestClient ?? new BinanceClient();
+            _restOwner = options?.RestClient == null;
+            _socketOwner = options?.SocketClient == null;
         }
 
         /// <inheritdoc />
-        protected override async Task<CallResult<UpdateSubscription>> DoStart()
+        protected override async Task<CallResult<UpdateSubscription>> DoStartAsync()
         {
             CallResult<UpdateSubscription> subResult;
             if (Levels == null)
-                subResult = await _socketClient.Spot.SubscribeToOrderBookUpdatesAsync(Symbol, _updateInterval, data => HandleUpdate((BinanceOrderBook)data)).ConfigureAwait(false);
+                subResult = await _socketClient.Spot.SubscribeToOrderBookUpdatesAsync(Symbol, _updateInterval, data => HandleUpdate((BinanceOrderBook)data.Data)).ConfigureAwait(false);
             else
-                subResult = await _socketClient.Spot.SubscribeToPartialOrderBookUpdatesAsync(Symbol, Levels.Value, _updateInterval, data => HandleUpdate((BinanceOrderBook)data)).ConfigureAwait(false);
+                subResult = await _socketClient.Spot.SubscribeToPartialOrderBookUpdatesAsync(Symbol, Levels.Value, _updateInterval, data => HandleUpdate((BinanceOrderBook)data.Data)).ConfigureAwait(false);
 
             if (!subResult)
                 return new CallResult<UpdateSubscription>(null, subResult.Error);
@@ -49,7 +54,7 @@ namespace Binance.Net.SymbolOrderBooks
                 var bookResult = await _restClient.Spot.Market.GetOrderBookAsync(Symbol, Levels ?? 5000).ConfigureAwait(false);
                 if (!bookResult)
                 {
-                    await _socketClient.UnsubscribeAll().ConfigureAwait(false);
+                    await _socketClient.UnsubscribeAllAsync().ConfigureAwait(false);
                     return new CallResult<UpdateSubscription>(null, bookResult.Error);
                 }
 
@@ -57,7 +62,7 @@ namespace Binance.Net.SymbolOrderBooks
             }
             else
             {
-                var setResult = await WaitForSetOrderBook(10000).ConfigureAwait(false);
+                var setResult = await WaitForSetOrderBookAsync(10000).ConfigureAwait(false);
                 return setResult ? subResult : new CallResult<UpdateSubscription>(null, setResult.Error);
             }
 
@@ -82,10 +87,10 @@ namespace Binance.Net.SymbolOrderBooks
         }
 
         /// <inheritdoc />
-        protected override async Task<CallResult<bool>> DoResync()
+        protected override async Task<CallResult<bool>> DoResyncAsync()
         {
             if (Levels != null)
-                return await WaitForSetOrderBook(10000).ConfigureAwait(false);
+                return await WaitForSetOrderBookAsync(10000).ConfigureAwait(false);
 
             var bookResult = await _restClient.Spot.Market.GetOrderBookAsync(Symbol, Levels ?? 5000).ConfigureAwait(false);
             if (!bookResult)
@@ -102,8 +107,10 @@ namespace Binance.Net.SymbolOrderBooks
             asks.Clear();
             bids.Clear();
 
-            _restClient?.Dispose();
-            _socketClient?.Dispose();
+            if(_restOwner)
+                _restClient?.Dispose();
+            if(_socketOwner)
+                _socketClient?.Dispose();
         }
     }
 }
